@@ -32,6 +32,7 @@ from sar_robot_command_msgs.msg import RobotState # ROS msgs
 from std_msgs.msg import Header # standard ROS Header
 import re #regular expression
 from std_msgs.msg import String
+import os, sys
 
 # The SAR robot translation node subscribes to the robot_command topic and 
 # translates any robot commands received from the generic format to platform-
@@ -44,7 +45,11 @@ class robot_translation():
         """ Initialize anything that needs initialization """
         # parse config file to find out which robot to send to
         try:
-            with open ("/home/sar/catkin_ws/src/sar_robot_translation/src/robot_translation_config.json") as json_file:#TODO: path issue
+            __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(sys.argv[0])))
+            config_file = os.path.join(__location__, 'robot_translation_config.json')
+            #rospy.loginfo('robot translation config = ' + config_file) 
+
+            with open (config_file) as json_file:
                 json_data = json.load(json_file)
             rospy.loginfo("Got config:\n" + str(json_data))
             self.which_robot = json_data['which_robot']
