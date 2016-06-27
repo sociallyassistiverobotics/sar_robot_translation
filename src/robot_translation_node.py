@@ -30,6 +30,8 @@ import json # to read in JSON config file
 from sar_robot_command_msgs.msg import RobotCommand # ROS msgs
 from sar_robot_command_msgs.msg import RobotState # ROS msgs
 from std_msgs.msg import Header # standard ROS Header
+import re #regular expression
+from std_msgs.msg import String
 
 # The SAR robot translation node subscribes to the robot_command topic and 
 # translates any robot commands received from the generic format to platform-
@@ -42,10 +44,11 @@ class robot_translation():
         """ Initialize anything that needs initialization """
         # parse config file to find out which robot to send to
         try:
-            with open ("robot_translation_config.json") as json_file:
+            with open ("/home/sar/catkin_ws/src/sar_robot_translation/src/robot_translation_config.json") as json_file:#TODO: path issue
                 json_data = json.load(json_file)
             rospy.loginfo("Got config:\n" + str(json_data))
             self.which_robot = json_data['which_robot']
+            rospy.loginfo('which robot = '+self.which_robot)
         except ValueError as e:
             rospy.logerr('Error! Could not open or parse json config file!'
                 + '\n  Did you use valid json?\nError: %s' % e)
@@ -76,11 +79,13 @@ class robot_translation():
         # publish to robot-specific topic to pass commands to robots
         # if robot is jibo...
         if (self.which_robot == 'JIBO'):
-            pass
             # TODO what topic and what message type for Jibo?
-            #self.jibo_pub = rospy.Publisher('jibo_command', JiboMessage,
-                    #queue_size = 10)
-            #rospy.loginfo("Will publish to 'jibo_command' topic.")
+            rospy.loginfo('setting up jibo communication')
+            self.jibo_pub = rospy.Publisher('jibo_command', RobotCommand, queue_size = 10)
+            self.jibo_lookat_pub = rospy.Publisher('/sar/jibo/lookat', String, queue_size=10)
+            self.jibo_speech_pub = rospy.Publisher('/sar/jibo/speech', String, queue_size=10)
+            self.jibo_animation_pub = rospy.Publisher('/sar/jibo/animation', String, queue_size=10)
+            rospy.loginfo("Will publish to 'jibo_command' topic.")
 
         # if robot is a SPRITE robot...
         elif (self.which_robot == 'SPRITE'):
@@ -108,13 +113,14 @@ class robot_translation():
 
     def on_robot_state_msg(self, data):
         """ Receive status messages from robots """
-        rospy.loginfo("Got message:\n" + str(data))
+        #rospy.loginfo("Got message:\n" + str(data))
         # TODO do something with robot status messages?
+        pass
 
 
     def on_robot_command_msg(self, data):
         """ Translate the robot command for the specific platform! """
-        rospy.loginfo("Got message:\n" + str(data))
+        #rospy.loginfo("Got message:\n" + str(data))
 
         # TODO check that data is valid after we finalize command format!
 
@@ -179,15 +185,65 @@ class robot_translation():
         #self.cordial_topic.publish(msg)
         #rospy.loginfo(msg)
 
-    
+    def extract_jibo_commands(self, properties):
+        # TODO: what is the tag for lookat?
+        jibo_speech = None
+        jibo_animation = None
+        jibo_lookat = None
+        rospy.loginfo("extracting jibo command")
+
+        if "<" in properties:
+            regex = re.compile("<(.*)>")
+            match = regex.search(properties)
+            if match == None:
+                return None, None, None #cmhuang: test
+            jibo_animation = match.group(1) #TODO: assuming only one match
+            jibo_speech = re.sub("<(.*)>", "", properties)
+        else: #only speech
+            jibo_speech = properties
+        
+        return jibo_speech, jibo_animation, jibo_lookat
+
     def send_to_jibo(self, data):
         """ Translate robot command to format Jibo uses """
         # TODO send command to jibo
-        rospy.logwarn("TODO send to jibo!")
+        #rospy.logwarn("TODO send to jibo!")
 
         # TODO create message to send
         # TODO fill message with data from RobotCommand
         # TODO send message
+        jibo_speech = None
+        jibo_animation = None
+        jibo_lookat = None
+        rospy.loginfo("sending jibo command")
+
+        if data.command == RobotCommand.SLEEP:
+            pass
+        elif data.command == RobotCommand.WAKEUP:
+            pass
+        elif data.command == RobotCommand.DO:
+            jibo_speech, jibo_animation, jibo_lookat = self.extract_jibo_commands(data.properties)
+
+        if jibo_speech != None:
+            rospy.loginfo("jibo_speech = " + jibo_speech)
+            self.jibo_speech_pub.publish(jibo_speech)
+        if jibo_animation != None:
+            self.jibo_animation_pub.publish('greeting.keys') #TODO: from here: test with the real robot
+            rospy.loginfo("jibo_animation = " + jibo_animation)
+
+        #rospy.loginfo("jibo_lookat = " + jibo_lookat)
+
+
+        #msg = RobotCommand()
+        # add header
+        #msg.header = Header()
+        #msg.header.stamp = rospy.Time.now()
+        # add message content
+        #msg.command = data.command
+        #msg.properties = data.properties
+        # send message
+        #self.jibo_pub.publish(msg)
+        #rospy.loginfo("Forwarding message to jibo robot:\n" + str(msg))
     
 
     def send_to_simulated(self, data):
