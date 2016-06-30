@@ -47,7 +47,6 @@ class robot_translation():
         try:
             __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(sys.argv[0])))
             config_file = os.path.join(__location__, 'robot_translation_config.json')
-            #rospy.loginfo('robot translation config = ' + config_file) 
 
             with open (config_file) as json_file:
                 json_data = json.load(json_file)
@@ -72,13 +71,13 @@ class robot_translation():
 
         # subscribe to /robot_command topic to get command messages
         # for the robot
-        rospy.Subscriber('robot_command', RobotCommand,
+        rospy.Subscriber('/sar/robot_command', RobotCommand,
                 self.on_robot_command_msg)
         rospy.loginfo("Subscribed to 'robot_command' topic.")
 
         # subscribe to /robot_state topic to get status messages from
         # the robot
-        rospy.Subscriber('robot_state', RobotState, self.on_robot_state_msg)
+        rospy.Subscriber('/sar/robot_state', RobotState, self.on_robot_state_msg)
         rospy.loginfo("Subscribed to 'robot_state' topic.")
 
         # publish to robot-specific topic to pass commands to robots
@@ -86,7 +85,7 @@ class robot_translation():
         if (self.which_robot == 'JIBO'):
             # TODO what topic and what message type for Jibo?
             rospy.loginfo('setting up jibo communication')
-            self.jibo_pub = rospy.Publisher('jibo_command', RobotCommand, queue_size = 10)
+            self.jibo_pub = rospy.Publisher('jibo_command', RobotCommand, queue_size = 10)#cmhuang: maybe change to this later?
             self.jibo_lookat_pub = rospy.Publisher('/sar/jibo/lookat', String, queue_size=10)
             self.jibo_speech_pub = rospy.Publisher('/sar/jibo/speech', String, queue_size=10)
             self.jibo_animation_pub = rospy.Publisher('/sar/jibo/animation', String, queue_size=10)
@@ -233,7 +232,7 @@ class robot_translation():
             rospy.loginfo("jibo_speech = " + jibo_speech)
             self.jibo_speech_pub.publish(jibo_speech)
         if jibo_animation != None:
-            self.jibo_animation_pub.publish('greeting.keys') #TODO: from here: test with the real robot
+            self.jibo_animation_pub.publish(jibo_animation+'.keys') 
             rospy.loginfo("jibo_animation = " + jibo_animation)
 
         #rospy.loginfo("jibo_lookat = " + jibo_lookat)
