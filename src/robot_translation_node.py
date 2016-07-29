@@ -33,6 +33,8 @@ from std_msgs.msg import Header # standard ROS Header
 import re #regular expression
 from std_msgs.msg import String
 import os, sys
+from sar_core.msg import JiboCommand # TODO: move it to a standalone pkg
+import Queue
 
 # The SAR robot translation node subscribes to the robot_command topic and 
 # translates any robot commands received from the generic format to platform-
@@ -85,10 +87,16 @@ class robot_translation():
         if (self.which_robot == 'JIBO'):
             # TODO what topic and what message type for Jibo?
             rospy.loginfo('setting up jibo communication')
-            self.jibo_pub = rospy.Publisher('jibo_command', RobotCommand, queue_size = 10)#cmhuang: maybe change to this later?
+            rospy.Subscriber('/sar/jibo/state', RobotState,
+                self.on_jibo_state)
+            rospy.loginfo("Subscribed to '/sar/jibo/state' topic.")
+            self.jibo_command_pub = rospy.Publisher('/sar/jibo/command', JiboCommand, queue_size = 10)
             self.jibo_lookat_pub = rospy.Publisher('/sar/jibo/lookat', String, queue_size=10)
             self.jibo_speech_pub = rospy.Publisher('/sar/jibo/speech', String, queue_size=10)
             self.jibo_animation_pub = rospy.Publisher('/sar/jibo/animation', String, queue_size=10)
+            self.robot_state_pub = rospy.Publisher('/sar/robot_state', RobotState, queue_size=10)
+            self._is_jibo_ready = True
+            self._is_robot_ready = True
             rospy.loginfo("Will publish to 'jibo_command' topic.")
 
         # if robot is a SPRITE robot...
@@ -131,7 +139,8 @@ class robot_translation():
         # pass command in platform-specific way
         # send to Jibo...
         if (self.which_robot == 'JIBO'):
-            self.send_to_jibo(data)
+            #self.send_to_jibo(data) # old format
+            self.send_to_jibo2(data)
         # send to SPRITE robot...
         elif (self.which_robot == 'SPRITE'):
             self.send_to_sprite(data)
@@ -141,7 +150,15 @@ class robot_translation():
         # fill in for any other robots:
         #elif (self.which_robot == 'OTHER_ROBOT'):
             #self.send_to_other_robot(data)
-
+        
+        # send a conceptual robot state signaling that the robot is busy
+        self._is_robot_ready = False
+        conceptual_robot_state = RobotState()
+        conceptual_robot_state.header = Header()
+        conceptual_robot_state.header.stamp = rospy.Time.now()
+        conceptual_robot_state.doing_action = True
+        conceptual_robot_state.is_playing_sound = True
+        self.robot_state_pub.publish(conceptual_robot_state)
 
     def send_to_sprite(self, data):
         """ Translate robot command to format SPRITE robot uses """
@@ -189,12 +206,15 @@ class robot_translation():
         #self.cordial_topic.publish(msg)
         #rospy.loginfo(msg)
 
+    def on_jibo_state(self, data):
+        # TODO: redo
+        self._is_jibo_ready = not (data.is_playing_sound or data.doing_action)
+ 
     def extract_jibo_commands(self, properties):
         # TODO: what is the tag for lookat?
         jibo_speech = None
         jibo_animation = None
         jibo_lookat = None
-        rospy.loginfo("extracting jibo command")
 
         if "<" in properties:
             regex = re.compile("<(.*)>")
@@ -205,9 +225,87 @@ class robot_translation():
             jibo_speech = re.sub("<(.*)>", "", properties)
         else: #only speech
             jibo_speech = properties
+        # TODO: lookat: lookat-game, lookat-user
         
         return jibo_speech, jibo_animation, jibo_lookat
+   
+    def extract_jibo_commands2(self, properties):
+        jibo_speech = None
+        jibo_animation = None
+        jibo_lookat = None
 
+        jibo_behavior_queue = Queue.Queue()
+
+        # break the robot command into jibo unit commands
+        while "<" in properties:
+            regex = re.compile("(<[a-z]*?,b>)|(<[a-z]*?,nb>)|(<[a-z]*?>)")
+            for matches in regex.finditer(properties):
+                _first_match = matches.group()
+                break
+            _seg = properties.split(_first_match)
+            _speech = _seg[0]
+            _speech = _speech.strip()
+            jibo_behavior_queue.put(_speech)
+            jibo_behavior_queue.put(_first_match)
+            properties = _seg[1]
+        if properties != "":
+            jibo_behavior_queue.put(properties)
+
+        return jibo_behavior_queue
+
+    def send_to_jibo2(self, data):
+        """ Translate robot command to format Jibo uses """
+        rospy.loginfo("sending jibo command")
+        
+        msg = JiboCommand()
+        msg.header = Header()
+        msg.header.stemp = rospy.Time.now()
+
+        if data.command == RobotCommand.SLEEP:
+            msg.signal = JiboCommand.SLEEP
+            self.jibo_command_pub.publish(msg)
+        elif data.command == RobotCommand.WAKEUP:
+            msg.signal = JiboCommand.WAKEUP
+            self.jibo_command_pub.publish(msg)
+        elif data.command == RobotCommand.DO:
+            msg.signal = JiboCommand.DO
+            # prepare sub-command queue
+            behavior_queue = self.extract_jibo_commands2(data.properties)
+            while (not behavior_queue.empty()) and (self._is_jibo_ready):
+                _msg = msg
+                _content = behavior_queue.get()
+                if "<" in _content:
+                    _content = _content.replace("<", "")
+                    _content = _content.replace(">", "")
+                    _anim = _content.split(",")
+                    _anim_file = _anim[0]
+                    _blocking = False
+                    if _anim[1] == "b":
+                        _blocking = True
+                    if _blocking:
+                        _msg.animation = _anim_file
+                        self.jibo_animation_pub.publish(_anim_file+'-2.keys') # OLD
+                    else:
+                        _msg.animation = _anim_file
+                        self.jibo_animation_pub.publish(_anim_file+'-2.keys') # OLD
+                        _speech = behavior_queue.get() # assuming that no two animations are attached together
+                         _msg.speech = _speech
+                        self.jibo_speech_pub.publish(_speech) # OLD
+                else:
+                    _msg.speech = _content
+                    self.jibo_speech_pub.publish(_content) # OLD
+                #self.jibo_command_pub.publish(_msg) # TODO: verify this new message
+                rospy.loginfo("Forwarding message to jibo robot:\n" + str(_msg))
+                self._is_robot_ready = False
+            # send a conceptual robot state signaling that the robot is ready again
+            self._is_robot_ready = True
+            conceptual_robot_state = RobotState()
+            conceptual_robot_state.header = Header()
+            conceptual_robot_state.header.stamp = rospy.Time.now()
+            conceptual_robot_state.doing_action = False
+            conceptual_robot_state.is_playing_sound = False
+            self.robot_state_pub.publish(conceptual_robot_state)
+       
     def send_to_jibo(self, data):
         """ Translate robot command to format Jibo uses """
         # TODO send command to jibo
@@ -220,19 +318,23 @@ class robot_translation():
         jibo_animation = None
         jibo_lookat = None
         rospy.loginfo("sending jibo command")
-
+        
         if data.command == RobotCommand.SLEEP:
             pass
         elif data.command == RobotCommand.WAKEUP:
             pass
         elif data.command == RobotCommand.DO:
+            # TODO: parsing the new format
             jibo_speech, jibo_animation, jibo_lookat = self.extract_jibo_commands(data.properties)
 
+        self.jibo_command_pub.publish(msg)
+        rospy.loginfo("Forwarding message to jibo robot:\n" + str(msg))
+       
         if jibo_speech != None:
             rospy.loginfo("jibo_speech = " + jibo_speech)
             self.jibo_speech_pub.publish(jibo_speech)
         if jibo_animation != None:
-            self.jibo_animation_pub.publish(jibo_animation+'.keys') 
+            self.jibo_animation_pub.publish(jibo_animation+'-2.keys') 
             rospy.loginfo("jibo_animation = " + jibo_animation)
 
         #rospy.loginfo("jibo_lookat = " + jibo_lookat)
