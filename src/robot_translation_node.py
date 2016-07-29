@@ -238,7 +238,8 @@ class robot_translation():
 
         # break the robot command into jibo unit commands
         while "<" in properties:
-            regex = re.compile("(<[a-z]*?,b>)|(<[a-z]*?,nb>)|(<[a-z]*?>)")
+            regex = re.compile("(<[a-z\-]*?,b>)|(<[a-z\-]*?,nb>)|(<[a-z\-]*?>)")
+            _first_match = None
             for matches in regex.finditer(properties):
                 _first_match = matches.group()
                 break
@@ -259,7 +260,7 @@ class robot_translation():
         
         msg = JiboCommand()
         msg.header = Header()
-        msg.header.stemp = rospy.Time.now()
+        msg.header.stamp = rospy.Time.now()
 
         if data.command == RobotCommand.SLEEP:
             msg.signal = JiboCommand.SLEEP
@@ -271,32 +272,36 @@ class robot_translation():
             msg.signal = JiboCommand.DO
             # prepare sub-command queue
             behavior_queue = self.extract_jibo_commands2(data.properties)
-            while (not behavior_queue.empty()) and (self._is_jibo_ready):
-                _msg = msg
-                _content = behavior_queue.get()
-                if "<" in _content:
-                    _content = _content.replace("<", "")
-                    _content = _content.replace(">", "")
-                    _anim = _content.split(",")
-                    _anim_file = _anim[0]
-                    _blocking = False
-                    if _anim[1] == "b":
-                        _blocking = True
-                    if _blocking:
-                        _msg.animation = _anim_file
-                        self.jibo_animation_pub.publish(_anim_file+'-2.keys') # OLD
+            while not behavior_queue.empty():
+                if self._is_jibo_ready:
+                    _msg = msg
+                    _content = behavior_queue.get()
+                    if "<" in _content:
+                        _content = _content.replace("<", "")
+                        _content = _content.replace(">", "")
+                        _anim = _content.split(",")
+                        _anim_file = _anim[0]
+                        _blocking = False
+                        if len(_anim) > 1:
+                            if _anim[1] == "b":
+                                _blocking = True
+                        if _blocking:
+                            _msg.animation = _anim_file
+                            self.jibo_animation_pub.publish(_anim_file+'-2.keys') # OLD
+                        else:
+                            _msg.animation = _anim_file
+                            self.jibo_animation_pub.publish(_anim_file+'-2.keys') # OLD
+                            _speech = behavior_queue.get() # assuming that no two animations are attached together
+                            _msg.speech = _speech
+                            self.jibo_speech_pub.publish(_speech) # OLD
                     else:
-                        _msg.animation = _anim_file
-                        self.jibo_animation_pub.publish(_anim_file+'-2.keys') # OLD
-                        _speech = behavior_queue.get() # assuming that no two animations are attached together
-                         _msg.speech = _speech
-                        self.jibo_speech_pub.publish(_speech) # OLD
-                else:
-                    _msg.speech = _content
-                    self.jibo_speech_pub.publish(_content) # OLD
-                #self.jibo_command_pub.publish(_msg) # TODO: verify this new message
-                rospy.loginfo("Forwarding message to jibo robot:\n" + str(_msg))
-                self._is_robot_ready = False
+                        _msg.speech = _content
+                        self.jibo_speech_pub.publish(_content) # OLD
+                    #self.jibo_command_pub.publish(_msg) # TODO: verify this new message
+                    rospy.loginfo("Forwarding message to jibo robot:\n" + str(_msg))
+                    self._is_robot_ready = False
+                    self._is_jibo_ready = False
+                    rospy.Rate(2).sleep() # sleep for 500 ms
             # send a conceptual robot state signaling that the robot is ready again
             self._is_robot_ready = True
             conceptual_robot_state = RobotState()
