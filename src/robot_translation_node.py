@@ -225,7 +225,8 @@ class robot_translation():
             _seg = properties.split(_first_match)
             _speech = _seg[0]
             _speech = _speech.strip()
-            jibo_behavior_queue.put(_speech)
+            if _speech != "":
+                jibo_behavior_queue.put(_speech)
             jibo_behavior_queue.put(_first_match)
             properties = _seg[1]
         if properties != "":
