@@ -232,6 +232,9 @@ class robot_translation():
         if properties != "":
             jibo_behavior_queue.put(properties)
 
+        #for elem in list(jibo_behavior_queue.queue):
+        #    rospy.loginfo(elem)
+
         return jibo_behavior_queue
 
     def send_to_jibo(self, data):
@@ -254,7 +257,11 @@ class robot_translation():
             while not behavior_queue.empty():
                 if self._is_jibo_ready:
                     _msg = msg
+                    #cmhuang: bug:  test
+                    #_msg.speech = ""
+
                     _content = behavior_queue.get()
+                    rospy.loginfo('_content = ' + _content)
                     if "<" in _content:
                         _content = _content.replace("<", "")
                         _content = _content.replace(">", "")
@@ -282,9 +289,11 @@ class robot_translation():
                             else: # TODO: lookat-user
                                 _msg.animation = _anim_file
                                 self.jibo_animation_pub.publish(_anim_file+'-2.keys') # OLD publ
-                            _speech = behavior_queue.get() # assuming that no two animations are attached together
-                            _msg.speech = _speech
-                            self.jibo_speech_pub.publish(_speech) # OLD publ
+                            #cmhuang: bug:  test
+                            if not behavior_queue.empty():
+                                _speech = behavior_queue.get() # assuming that no two animations are attached together
+                                _msg.speech = _speech
+                                self.jibo_speech_pub.publish(_speech) # OLD publ
                     else:
                         _msg.speech = _content
                         self.jibo_speech_pub.publish(_content) # OLD publ
