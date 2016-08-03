@@ -257,8 +257,7 @@ class robot_translation():
             while not behavior_queue.empty():
                 if self._is_jibo_ready:
                     _msg = msg
-                    #cmhuang: bug:  test
-                    #_msg.speech = ""
+                    _msg.speech = ""
 
                     _content = behavior_queue.get()
                     rospy.loginfo('_content = ' + _content)
@@ -289,7 +288,6 @@ class robot_translation():
                             else: # TODO: lookat-user
                                 _msg.animation = _anim_file
                                 self.jibo_animation_pub.publish(_anim_file+'-2.keys') # OLD publ
-                            #cmhuang: bug:  test
                             if not behavior_queue.empty():
                                 _speech = behavior_queue.get() # assuming that no two animations are attached together
                                 _msg.speech = _speech
@@ -302,7 +300,7 @@ class robot_translation():
                     rospy.loginfo("Forwarding message to jibo robot:\n" + str(_msg))
                     self._is_robot_ready = False
                     self._is_jibo_ready = False
-                    rospy.Rate(20).sleep() # sleep for 50 ms
+                    rospy.Rate(10).sleep() # sleep for 100 ms: do not use 50ms or below..
             # send a conceptual robot state signaling that the robot is ready again
             self._is_robot_ready = True
             conceptual_robot_state = RobotState()
