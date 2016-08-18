@@ -328,7 +328,7 @@ class robot_translation():
         msg.repeat_n = _n
         self.jibo_animation_pub.publish(msg)
 
-    def send_jibo_speech(self, _content, _pitch=8.0, _bandwidth=1.0, _stretch=1.0):
+    def send_jibo_speech(self, _content, _pitch=7.6, _bandwidth=2.0, _stretch=1.07):
         msg = JiboSpeech()
         msg.header = Header()
         msg.header.stamp = rospy.Time.now()
