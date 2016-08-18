@@ -33,7 +33,7 @@ from std_msgs.msg import Header # standard ROS Header
 import re #regular expression
 from std_msgs.msg import String
 import os, sys
-from sar_jibo_command_msgs import JiboSpeech, JiboAnimation, JiboLookat
+from sar_jibo_command_msgs.msg import JiboSpeech, JiboAnimation, JiboLookat
 import Queue
 
 # The SAR robot translation node subscribes to the robot_command topic and
