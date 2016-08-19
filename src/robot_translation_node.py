@@ -281,6 +281,8 @@ class robot_translation():
                     #_msg = msg
                     #_msg.speech = ""
                     _content = behavior_queue.get()
+                    if _content == None:
+                        continue
                     rospy.loginfo('_content = ' + _content)
                     if "<" in _content:
                         _content = _content.replace("<", "")
