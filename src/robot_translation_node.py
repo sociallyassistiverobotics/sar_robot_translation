@@ -209,11 +209,30 @@ class robot_translation():
         self._is_jibo_ready = not (data.is_playing_sound or data.doing_action)
 
     def command_to_behavior_queue(self, properties):
-        jibo_speech = None
-        jibo_animation = None
-        jibo_lookat = None
-
         jibo_behavior_queue = Queue.Queue()
+        speech_parameters = {}
+
+        # extract speech parameters
+        if "(" in properties:
+            regex = re.compile("(\([\w\s,.:]*?\))")
+            p = regex.match(properties)
+            sp = None
+            if p != None:
+                sp = p.group()
+            if sp != None:
+                _temp = properties.split(sp)
+                properties = _temp[1].lstrip()
+                #parse sp to parameters
+                sp = sp.replace('(')
+                sp = sp.replace(')')
+                sp_elements = sp.split(',')
+                for elem in sp_elements:
+                    elem = elem.strip()
+                    elem = elem.lstrip()
+                    _elem = elem.split(':')
+                    _key = _elem[0]
+                    _value = float(_elem[1])
+                    speech_parameters[_key] = _value
 
         # break the robot command into jibo unit commands
         while "<" in properties:
@@ -225,6 +244,7 @@ class robot_translation():
             _seg = properties.split(_first_match)
             _speech = _seg[0]
             _speech = _speech.strip()
+            _speech = _speech.lstrip()
             if _speech != "":
                 jibo_behavior_queue.put(_speech)
             jibo_behavior_queue.put(_first_match)
@@ -235,7 +255,7 @@ class robot_translation():
         #for elem in list(jibo_behavior_queue.queue):
         #    rospy.loginfo(elem)
 
-        return jibo_behavior_queue
+        return jibo_behavior_queue, speech_parameters
 
     def send_to_jibo(self, data):
         """ Translate robot command to format Jibo uses """
@@ -255,12 +275,11 @@ class robot_translation():
         elif data.command == RobotCommand.DO:
             #msg.signal = JiboCommand.DO
             # prepare sub-command queue
-            behavior_queue = self.command_to_behavior_queue(data.properties)
+            behavior_queue, speech_parameters = self.command_to_behavior_queue(data.properties)
             while not behavior_queue.empty():
                 if self._is_jibo_ready:
                     #_msg = msg
                     #_msg.speech = ""
-
                     _content = behavior_queue.get()
                     rospy.loginfo('_content = ' + _content)
                     if "<" in _content:
@@ -293,10 +312,10 @@ class robot_translation():
                             if not behavior_queue.empty():
                                 _speech = behavior_queue.get() # assuming that no two animations are attached together
                                 #_msg.speech = _speech
-                                self.send_jibo_speech(_speech)
+                                self.send_jibo_speech(_speech, speech_parameters)
                     else:
                         #_msg.speech = _content
-                        self.send_jibo_speech(_content)
+                        self.send_jibo_speech(_content, speech_parameters)
                     #_msg.header.stamp = rospy.Time.now()
                     #self.jibo_command_pub.publish(_msg) # not the best way, causing delays
                     #rospy.loginfo("Forwarding message to jibo robot:\n" + str(_msg))
@@ -330,11 +349,19 @@ class robot_translation():
         msg.repeat_n = _n
         self.jibo_animation_pub.publish(msg)
 
-    def send_jibo_speech(self, _content, _pitch=8.5, _bandwidth=2.0, _stretch=1.07):
+    def send_jibo_speech(self, _content, _parameters):
         msg = JiboSpeech()
         msg.header = Header()
         msg.header.stamp = rospy.Time.now()
         msg.speech_content = _content
+        # default paramters for jibo speech
+        _pitch = 8.5
+        _bandwidth = 2.0
+        _stretch = 1.07
+        if _parameters: # dictionary is not empty
+            _pitch = _parameters['pitch']
+            _bandwidth = _parameters['pitchBandwidth']
+            _stretch = _parameters['duration_stretch']
         msg.pitch = _pitch
         msg.pitch_bandwidth = _bandwidth
         msg.duration_stretch = _stretch
