@@ -95,7 +95,7 @@ class robot_translation():
             rospy.Subscriber('/sar/jibo/state', RobotState,
                 self.on_jibo_state)
             rospy.loginfo("Subscribed to '/sar/jibo/state' topic.")
-            rospy.subscribe('/sar/perception/user_head_position_rf', Vector3, self.user_head_position_jibo_rf_callback)
+            rospy.Subscriber('/sar/perception/user_head_position_rf', Vector3, self.user_head_position_jibo_rf_callback)
             #self.jibo_command_pub = rospy.Publisher('/sar/jibo/command', JiboCommand, queue_size = 10)
             self.jibo_lookat_pub = rospy.Publisher('/sar/jibo/lookat', JiboLookat, queue_size=10)
             self.jibo_speech_pub = rospy.Publisher('/sar/jibo/speech', JiboSpeech, queue_size=10)
@@ -254,7 +254,7 @@ class robot_translation():
         # break the robot command into jibo unit commands
         while "<" in properties:
             #regex = re.compile("(<[a-z\-]*?,b>)|(<[a-z\-]*?,nb>)|(<[a-z\-]*?>)")
-            regex = re.compile("(<[a-z\-]*?\s?,?\s?[b|nb]*>)")
+            regex = re.compile("(<[a-z\-_]*?\s?,?\s?[b|nb]*>)")
             _first_match = None
             for matches in regex.finditer(properties):
                 _first_match = matches.group()
