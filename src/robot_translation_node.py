@@ -231,8 +231,8 @@ class robot_translation():
                 _temp = properties.split(sp)
                 properties = _temp[1].lstrip()
                 #parse sp to parameters
-                sp = sp.replace('(')
-                sp = sp.replace(')')
+                sp = sp.replace('(',"")
+                sp = sp.replace(')',"")
                 sp_elements = sp.split(',')
                 for elem in sp_elements:
                     elem = elem.strip()
@@ -377,7 +377,7 @@ class robot_translation():
         msg.header.stamp = rospy.Time.now()
         msg.speech_content = _content
         # default paramters for jibo speech
-        _pitch = 8.5
+        _pitch = 7.6
         _bandwidth = 2.0
         _stretch = 1.07
         if _parameters: # dictionary is not empty
