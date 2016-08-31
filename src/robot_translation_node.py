@@ -29,6 +29,7 @@ import rospy # ROS
 import json # to read in JSON config file
 from sar_robot_command_msgs.msg import RobotCommand # ROS msgs
 from sar_robot_command_msgs.msg import RobotState # ROS msgs
+from geometry_msgs.msg import Vector3
 from std_msgs.msg import Header # standard ROS Header
 import re #regular expression
 from std_msgs.msg import String
@@ -94,6 +95,7 @@ class robot_translation():
             rospy.Subscriber('/sar/jibo/state', RobotState,
                 self.on_jibo_state)
             rospy.loginfo("Subscribed to '/sar/jibo/state' topic.")
+            rospy.subscribe('/sar/perception/user_head_position_rf', Vector3, self.user_head_position_jibo_rf_callback)
             #self.jibo_command_pub = rospy.Publisher('/sar/jibo/command', JiboCommand, queue_size = 10)
             self.jibo_lookat_pub = rospy.Publisher('/sar/jibo/lookat', JiboLookat, queue_size=10)
             self.jibo_speech_pub = rospy.Publisher('/sar/jibo/speech', JiboSpeech, queue_size=10)
@@ -101,6 +103,11 @@ class robot_translation():
             self.robot_state_pub = rospy.Publisher('/sar/robot_state', RobotState, queue_size=10)
             self._is_jibo_ready = True
             self._is_robot_ready = True
+            # default position of the user head
+            self._current_user_head_pos_jibo_rf = Vector3()
+            self._current_user_head_pos_jibo_rf.x = 1
+            self._current_user_head_pos_jibo_rf.y = 0
+            self._current_user_head_pos_jibo_rf.z = 1
             rospy.loginfo("Will publish to 'jibo_command' topic.")
 
         # if robot is a SPRITE robot...
@@ -209,8 +216,10 @@ class robot_translation():
         #self.cordial_topic.publish(msg)
         #rospy.loginfo(msg)
 
+
     def on_jibo_state(self, data):
         self._is_jibo_ready = not (data.is_playing_sound or data.doing_action)
+
 
     def command_to_behavior_queue(self, properties):
         jibo_behavior_queue = Queue.Queue()
@@ -268,6 +277,7 @@ class robot_translation():
 
         return jibo_behavior_queue, speech_parameters
 
+
     def send_to_jibo(self, data):
         """ Translate robot command to format Jibo uses """
         #rospy.loginfo("sending jibo command")
@@ -317,7 +327,12 @@ class robot_translation():
                                 #_msg.lookat_y = -0.65
                                 #_msg.lookat_z = 0.25
                                 self.send_jibo_lookat(0.15, -0.65, 0.25)
-                            else: # TODO: lookat-user
+                            elif _anim_file == "lookat_child":
+                                self.send_jibo_lookat(self._current_user_head_pos_jibo_rf.x, self._current_user_head_pos_jibo_rf.y, self._current_user_head_pos_jibo_rf.z)
+                            elif _anim_file == "lookat_guardian":
+                                # TODO: need to update these values
+                                self.send_jibo_lookat(1, 0.5, 1)
+                            else:
                                 #_msg.animation = _anim_file
                                 self.send_jibo_animation(_anim_file+'-2.keys')
                         else:
@@ -326,7 +341,12 @@ class robot_translation():
                                 #_msg.lookat_y = -0.65
                                 #_msg.lookat_z = 0.25
                                 self.send_jibo_lookat(0.15, -0.65, 0.25)
-                            else: # TODO: lookat-user
+                            elif _anim_file == "lookat_child":
+                                self.send_jibo_lookat(self._current_user_head_pos_jibo_rf.x, self._current_user_head_pos_jibo_rf.y, self._current_user_head_pos_jibo_rf.z)
+                            elif _anim_file == "lookat_guardian":
+                                # TODO: need to update these values
+                                self.send_jibo_lookat(1, 0.5, 1)
+                            else:
                                 #_msg.animation = _anim_file
                                 self.send_jibo_animation(_anim_file+'-2.keys')
                             if not behavior_queue.empty():
@@ -353,6 +373,7 @@ class robot_translation():
             conceptual_robot_state.is_playing_sound = False
             self.robot_state_pub.publish(conceptual_robot_state)
 
+
     def send_jibo_lookat(self, _x, _y, _z, _duration=-1):
         msg = JiboLookat()
         msg.header = Header()
@@ -363,6 +384,7 @@ class robot_translation():
         msg.duration = _duration
         self.jibo_lookat_pub.publish(msg)
 
+
     def send_jibo_animation(self, _name, _n=1.0):
         msg = JiboAnimation()
         msg.header = Header()
@@ -370,6 +392,7 @@ class robot_translation():
         msg.animation_name = _name
         msg.repeat_n = _n
         self.jibo_animation_pub.publish(msg)
+
 
     def send_jibo_speech(self, _content, _parameters):
         msg = JiboSpeech()
@@ -388,6 +411,12 @@ class robot_translation():
         msg.pitch_bandwidth = _bandwidth
         msg.duration_stretch = _stretch
         self.jibo_speech_pub.publish(msg)
+
+
+    def user_head_position_jibo_rf_callback(self, data):
+        self._current_user_head_pos_jibo_rf.x = data.x
+        self._current_user_head_pos_jibo_rf.y = data.y
+        self._current_user_head_pos_jibo_rf.z = data.z
 
     def send_to_simulated(self, data):
         """ Translate robot command to format simulated robot uses """
