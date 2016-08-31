@@ -71,6 +71,10 @@ class robot_translation():
         rospy.loginfo("Robot translation node starting up! Configured to send "
                "to " + self.which_robot + " robot.")
 
+        # obtain participant names
+        self.child_name = rospy.get_param('/sar/global/_child_name')
+        self.guardian_name = rospy.get_param('/sar/global/_guardian_name')
+
         # subscribe to /robot_command topic to get command messages
         # for the robot
         rospy.Subscriber('/sar/robot_command', RobotCommand,
@@ -132,7 +136,7 @@ class robot_translation():
 
     def on_robot_command_msg(self, data):
         """ Translate the robot command for the specific platform! """
-        #rospy.loginfo("Got message:\n" + str(data))
+        rospy.loginfo("Got message:\n" + str(data))
 
         # TODO check that data is valid after we finalize command format!
 
@@ -212,6 +216,10 @@ class robot_translation():
         jibo_behavior_queue = Queue.Queue()
         speech_parameters = {}
 
+        # replace child-name and guardian-name
+        properties = properties.replace("[child-name]", self.child_name)
+        properties = properties.replace("[guardian-name]", self.guardian_name)
+
         # extract speech parameters
         if "(" in properties:
             regex = re.compile("(\([\w\s,.:]*?\))")
@@ -236,7 +244,8 @@ class robot_translation():
 
         # break the robot command into jibo unit commands
         while "<" in properties:
-            regex = re.compile("(<[a-z\-]*?,b>)|(<[a-z\-]*?,nb>)|(<[a-z\-]*?>)")
+            #regex = re.compile("(<[a-z\-]*?,b>)|(<[a-z\-]*?,nb>)|(<[a-z\-]*?>)")
+            regex = re.compile("(<[a-z\-]*?\s?,?\s?[b|nb]*>)")
             _first_match = None
             for matches in regex.finditer(properties):
                 _first_match = matches.group()
@@ -252,18 +261,21 @@ class robot_translation():
         if properties != "":
             jibo_behavior_queue.put(properties)
 
-        #for elem in list(jibo_behavior_queue.queue):
-        #    rospy.loginfo(elem)
+        rospy.loginfo("--------------------------------")
+        for elem in list(jibo_behavior_queue.queue):
+            rospy.loginfo(elem)
+        rospy.loginfo("--------------------------------")
 
         return jibo_behavior_queue, speech_parameters
 
     def send_to_jibo(self, data):
         """ Translate robot command to format Jibo uses """
-        rospy.loginfo("sending jibo command")
+        #rospy.loginfo("sending jibo command")
 
         #msg = JiboCommand()
         #msg.header = Header()
 
+        # TODO: should spin out a thread for this..
         if data.command == RobotCommand.SLEEP:
             #msg.signal = JiboCommand.SLEEP
             #self.jibo_command_pub.publish(msg)
@@ -276,6 +288,7 @@ class robot_translation():
             #msg.signal = JiboCommand.DO
             # prepare sub-command queue
             behavior_queue, speech_parameters = self.command_to_behavior_queue(data.properties)
+
             while not behavior_queue.empty():
                 if self._is_jibo_ready:
                     #_msg = msg
@@ -291,9 +304,14 @@ class robot_translation():
                         _anim_file = _anim[0]
                         _blocking = True
                         if len(_anim) > 1:
-                            if _anim[1] == "nb":
+                            _specified_blocking = _anim[1]
+                            _specified_blocking = _specified_blocking.strip()
+                            _specified_blocking = _specified_blocking.lstrip()
+                            if _specified_blocking == "nb":
                                 _blocking = False
+                        rospy.loginfo('_blocking = ' + str(_blocking))
                         if _blocking:
+                            rospy.loginfo('_anim_file = ' + _anim_file)
                             if (_anim_file == "lookat-game") or (_anim_file == "lookat-screen"):
                                 #_msg.lookat_x = 0.15 # TODO: make these values globally available
                                 #_msg.lookat_y = -0.65
@@ -314,9 +332,11 @@ class robot_translation():
                             if not behavior_queue.empty():
                                 _speech = behavior_queue.get() # assuming that no two animations are attached together
                                 #_msg.speech = _speech
+                                rospy.loginfo('_speech = ' + _speech)
                                 self.send_jibo_speech(_speech, speech_parameters)
                     else:
                         #_msg.speech = _content
+                        rospy.loginfo('_speech/content = ' + _content)
                         self.send_jibo_speech(_content, speech_parameters)
                     #_msg.header.stamp = rospy.Time.now()
                     #self.jibo_command_pub.publish(_msg) # not the best way, causing delays
