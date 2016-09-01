@@ -328,13 +328,13 @@ class robot_translation():
                                 #_msg.lookat_z = 0.25
                                 self.send_jibo_lookat(0.15, -0.65, 0.25)
                             elif (_anim_file == "lookat_child") or (_anim_file == "return-front") or (_anim_file == "lookat-child"):
-                                rospy.loginfo('user head: ' + str(1) + ' ' + str(self._current_user_head_pos_jibo_rf.y) + ' ' +str(self._current_user_head_pos_jibo_rf.z))
+                                rospy.loginfo('user head: ' + str(abs(self._current_user_head_pos_jibo_rf.x)) + ' ' + str(self._current_user_head_pos_jibo_rf.y) + ' ' +str(self._current_user_head_pos_jibo_rf.z))
                                 my_y = self._current_user_head_pos_jibo_rf.y
-                                if my_y >= 0.1:
+                                if my_y >= 0.0:
                                     my_y = 0
-                                if my_y < -0.45:
+                                if my_y < -0.4:
                                     my_y = 0
-                                self.send_jibo_lookat(1, my_y, self._current_user_head_pos_jibo_rf.z)
+                                self.send_jibo_lookat(abs(self._current_user_head_pos_jibo_rf.x), my_y, self._current_user_head_pos_jibo_rf.z)
                                 #self.send_jibo_lookat(1,0,1)
                             elif _anim_file == "lookat_guardian":
                                 # TODO: need to update these values
@@ -349,13 +349,13 @@ class robot_translation():
                                 #_msg.lookat_z = 0.25
                                 self.send_jibo_lookat(0.15, -0.65, 0.25)
                             elif (_anim_file == "lookat_child") or (_anim_file == "return-front") or (_anim_file == "lookat-child"):
-                                rospy.loginfo('user head: ' + str(1) + ' ' + str(self._current_user_head_pos_jibo_rf.y) + ' ' +str(self._current_user_head_pos_jibo_rf.z))
+                                rospy.loginfo('user head: ' + str(abs(self._current_user_head_pos_jibo_rf.x)) + ' ' + str(self._current_user_head_pos_jibo_rf.y) + ' ' +str(self._current_user_head_pos_jibo_rf.z))
                                 my_y = self._current_user_head_pos_jibo_rf.y
-                                if my_y >= 0.1:
+                                if my_y >= 0.0:
                                     my_y = 0
-                                if my_y < -0.45:
+                                if my_y < -0.4:
                                     my_y = 0
-                                self.send_jibo_lookat(1, my_y, self._current_user_head_pos_jibo_rf.z)
+                                self.send_jibo_lookat(abs(self._current_user_head_pos_jibo_rf.x), my_y, self._current_user_head_pos_jibo_rf.z)
                                 #self.send_jibo_lookat(1,0,1)
                             elif _anim_file == "lookat_guardian":
                                 # TODO: need to update these values
