@@ -106,8 +106,8 @@ class robot_translation():
             # default position of the user head
             self._current_user_head_pos_jibo_rf = Vector3()
             self._current_user_head_pos_jibo_rf.x = 1
-            self._current_user_head_pos_jibo_rf.y = 0
-            self._current_user_head_pos_jibo_rf.z = 1
+            self._current_user_head_pos_jibo_rf.y = -0.4
+            self._current_user_head_pos_jibo_rf.z = 0.8
             rospy.loginfo("Will publish to 'jibo_command' topic.")
 
         # if robot is a SPRITE robot...
@@ -378,6 +378,11 @@ class robot_translation():
                     self._is_robot_ready = False
                     self._is_jibo_ready = False
                     rospy.Rate(10).sleep() # sleep for 100 ms: do not use 50ms or below..
+
+            # need to wait for jibo to finish the last command request
+            while self._is_jibo_ready == False:
+                rospy.Rate(10).sleep()
+                continue
             # send a conceptual robot state signaling that the robot is ready again
             self._is_robot_ready = True
             conceptual_robot_state = RobotState()
