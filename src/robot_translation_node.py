@@ -322,7 +322,7 @@ class robot_translation():
                         rospy.loginfo('_blocking = ' + str(_blocking))
                         if _blocking:
                             rospy.loginfo('_anim_file = ' + _anim_file)
-                            if (_anim_file == "lookat-game") or (_anim_file == "lookat-screen"):
+                            if (_anim_file == "lookat-game") or (_anim_file == "lookat-screen") or (_anim_file == "lookat_screen"):
                                 #_msg.lookat_x = 0.15 # TODO: make these values globally available
                                 #_msg.lookat_y = -0.65
                                 #_msg.lookat_z = 0.25
@@ -343,7 +343,7 @@ class robot_translation():
                                 #_msg.animation = _anim_file
                                 self.send_jibo_animation(_anim_file+'-2.keys')
                         else:
-                            if (_anim_file == "lookat-game") or (_anim_file == "lookat-screen"):
+                            if (_anim_file == "lookat-game") or (_anim_file == "lookat-screen") or (_anim_file == "lookat_screen"):
                                 #_msg.lookat_x = 0.15 # TODO: make these values globally available
                                 #_msg.lookat_y = -0.65
                                 #_msg.lookat_z = 0.25
