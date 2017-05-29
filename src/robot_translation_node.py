@@ -95,7 +95,6 @@ class robot_translation():
             rospy.Subscriber('/sar/jibo/state', RobotState,
                 self.on_jibo_state)
             rospy.loginfo("Subscribed to '/sar/jibo/state' topic.")
-            rospy.Subscriber('/sar/perception/user_head_position_rf', Vector3, self.user_head_position_jibo_rf_callback)
             #self.jibo_command_pub = rospy.Publisher('/sar/jibo/command', JiboCommand, queue_size = 10)
             self.jibo_lookat_pub = rospy.Publisher('/sar/jibo/lookat', JiboLookat, queue_size=10)
             self.jibo_speech_pub = rospy.Publisher('/sar/jibo/speech', JiboSpeech, queue_size=10)
@@ -108,6 +107,7 @@ class robot_translation():
             self._current_user_head_pos_jibo_rf.x = 1
             self._current_user_head_pos_jibo_rf.y = -0.4
             self._current_user_head_pos_jibo_rf.z = 0.8
+            rospy.Subscriber('/sar/perception/user_head_position_rf', Vector3, self.user_head_position_jibo_rf_callback)
             rospy.loginfo("Will publish to 'jibo_command' topic.")
 
         # if robot is a SPRITE robot...
@@ -225,6 +225,9 @@ class robot_translation():
         jibo_behavior_queue = Queue.Queue()
         speech_parameters = {}
 
+        # replace "\""
+        properties = properties.replace("\"", "")
+
         # replace child-name and guardian-name
         properties = properties.replace("[child-name]", self.child_name)
         properties = properties.replace("[guardian-name]", self.guardian_name)
@@ -339,6 +342,8 @@ class robot_translation():
                             elif _anim_file == "lookat_guardian":
                                 # TODO: need to update these values
                                 self.send_jibo_lookat(1, 0.5, 1)
+                            elif _anim_file == "jibo-sleep-mode":
+                                self.send_jibo_lookat(-1, -0.8, 0)
                             else:
                                 #_msg.animation = _anim_file
                                 self.send_jibo_animation(_anim_file+'-2.keys')
@@ -360,6 +365,8 @@ class robot_translation():
                             elif _anim_file == "lookat_guardian":
                                 # TODO: need to update these values
                                 self.send_jibo_lookat(1, 0.5, 1)
+                            elif _anim_file == "jibo-sleep-mode":
+                                self.send_jibo_lookat(-1, -0.8, 0)
                             else:
                                 #_msg.animation = _anim_file
                                 self.send_jibo_animation(_anim_file+'-2.keys')
