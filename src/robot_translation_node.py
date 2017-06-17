@@ -74,7 +74,7 @@ class robot_translation():
 
         # obtain participant names
         self.child_name = rospy.get_param('/sar/global/_child_name')
-        self.guardian_name = rospy.get_param('/sar/global/_guardian_name')
+        # self.guardian_name = rospy.get_param('/sar/global/_guardian_name')
 
         # subscribe to /robot_command topic to get command messages
         # for the robot
@@ -230,7 +230,8 @@ class robot_translation():
 
         # replace child-name and guardian-name
         properties = properties.replace("[child-name]", self.child_name)
-        properties = properties.replace("[guardian-name]", self.guardian_name)
+        _guardian_name = rospy.get_param('/sar/global/_guardian_name')
+        properties = properties.replace("[guardian-name]", _guardian_name)
 
         # extract speech parameters
         if "(" in properties:
