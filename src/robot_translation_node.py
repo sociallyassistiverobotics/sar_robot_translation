@@ -36,6 +36,7 @@ from std_msgs.msg import String
 import os, sys
 from sar_jibo_command_msgs.msg import JiboSpeech, JiboAnimation, JiboLookat
 import Queue
+from threading import Thread
 
 # The SAR robot translation node subscribes to the robot_command topic and
 # translates any robot commands received from the generic format to platform-
@@ -71,6 +72,9 @@ class robot_translation():
         rospy.init_node('robot_translation_node', anonymous=True)
         rospy.loginfo("Robot translation node starting up! Configured to send "
                "to " + self.which_robot + " robot.")
+
+        self.robot_command_queue  = Queue.Queue()
+        robot_command_sender_thread = Thread(target=self.send_robot_command).start()
 
         # obtain participant names
         self.child_name = rospy.get_param('/sar/global/_child_name')
@@ -147,28 +151,45 @@ class robot_translation():
 
         # TODO check that data is valid after we finalize command format!
 
-        # send a \fake\ conceptual robot state signaling that the robot is busy
-        self._is_robot_ready = False
-        conceptual_robot_state = RobotState()
-        conceptual_robot_state.header = Header()
-        conceptual_robot_state.header.stamp = rospy.Time.now()
-        conceptual_robot_state.doing_action = True
-        conceptual_robot_state.is_playing_sound = True
-        self.robot_state_pub.publish(conceptual_robot_state)
+        # maintain the size to be 1
+        while not self.robot_command_queue.empty():
+        	_discarded_cmd = self.robot_command_queue.get()
+        	rospy.loginfo('discarding robot command: {}'.format(_discarded_cmd))
+        	
+        self.robot_command_queue.put(data)
 
-        # pass command in platform-specific way
-        # send to Jibo...
-        if (self.which_robot == 'JIBO'):
-            self.send_to_jibo(data)
-        # send to SPRITE robot...
-        elif (self.which_robot == 'SPRITE'):
-            self.send_to_sprite(data)
-        # send to simulated robot...
-        elif (self.which_robot == 'SIMULATED'):
-            self.send_to_simulated(data)
-        # fill in for any other robots:
-        #elif (self.which_robot == 'OTHER_ROBOT'):
-            #self.send_to_other_robot(data)
+        
+    def send_robot_command(self):
+    	while True:
+	    	if self.robot_command_queue.empty():
+	    		# sleep a bit
+	    		rospy.Rate(10).sleep()
+	    		continue
+	    	
+	    	data = self.robot_command_queue.get()
+
+	    	# send a \fake\ conceptual robot state signaling that the robot is busy
+	        self._is_robot_ready = False
+	        conceptual_robot_state = RobotState()
+	        conceptual_robot_state.header = Header()
+	        conceptual_robot_state.header.stamp = rospy.Time.now()
+	        conceptual_robot_state.doing_action = True
+	        conceptual_robot_state.is_playing_sound = True
+	        self.robot_state_pub.publish(conceptual_robot_state)
+
+	        # pass command in platform-specific way
+	        # send to Jibo...
+	        if (self.which_robot == 'JIBO'):
+	            self.send_to_jibo(data)
+	        # send to SPRITE robot...
+	        elif (self.which_robot == 'SPRITE'):
+	            self.send_to_sprite(data)
+	        # send to simulated robot...
+	        elif (self.which_robot == 'SIMULATED'):
+	            self.send_to_simulated(data)
+	        # fill in for any other robots:
+	        #elif (self.which_robot == 'OTHER_ROBOT'):
+	            #self.send_to_other_robot(data)
 
     def send_to_sprite(self, data):
         """ Translate robot command to format SPRITE robot uses """
