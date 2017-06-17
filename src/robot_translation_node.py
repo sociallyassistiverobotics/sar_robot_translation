@@ -73,6 +73,8 @@ class robot_translation():
         rospy.loginfo("Robot translation node starting up! Configured to send "
                "to " + self.which_robot + " robot.")
 
+        self.conceptual_robot_state = RobotState()
+        self.conceptual_robot_state.header = Header()
         self.robot_command_queue  = Queue.Queue()
         robot_command_sender_thread = Thread(target=self.send_robot_command).start()
 
@@ -156,6 +158,8 @@ class robot_translation():
         	_discarded_cmd = self.robot_command_queue.get()
         	rospy.loginfo('discarding robot command: {}'.format(_discarded_cmd))
         	
+        # if self.conceptual_robot_state.doing_action == False and self.conceptual_robot_state.is_playing_sound == False:
+        # cmhuang: this would miss important msg
         self.robot_command_queue.put(data)
 
         
@@ -170,12 +174,12 @@ class robot_translation():
 
 	    	# send a \fake\ conceptual robot state signaling that the robot is busy
 	        self._is_robot_ready = False
-	        conceptual_robot_state = RobotState()
-	        conceptual_robot_state.header = Header()
-	        conceptual_robot_state.header.stamp = rospy.Time.now()
-	        conceptual_robot_state.doing_action = True
-	        conceptual_robot_state.is_playing_sound = True
-	        self.robot_state_pub.publish(conceptual_robot_state)
+	        # conceptual_robot_state = RobotState()
+	        # conceptual_robot_state.header = Header()
+	        self.conceptual_robot_state.header.stamp = rospy.Time.now()
+	        self.conceptual_robot_state.doing_action = True
+	        self.conceptual_robot_state.is_playing_sound = True
+	        self.robot_state_pub.publish(self.conceptual_robot_state)
 
 	        # pass command in platform-specific way
 	        # send to Jibo...
@@ -414,12 +418,12 @@ class robot_translation():
                 continue
             # send a conceptual robot state signaling that the robot is ready again
             self._is_robot_ready = True
-            conceptual_robot_state = RobotState()
-            conceptual_robot_state.header = Header()
-            conceptual_robot_state.header.stamp = rospy.Time.now()
-            conceptual_robot_state.doing_action = False
-            conceptual_robot_state.is_playing_sound = False
-            self.robot_state_pub.publish(conceptual_robot_state)
+            # conceptual_robot_state = RobotState()
+            # conceptual_robot_state.header = Header()
+            self.conceptual_robot_state.header.stamp = rospy.Time.now()
+            self.conceptual_robot_state.doing_action = False
+            self.conceptual_robot_state.is_playing_sound = False
+            self.robot_state_pub.publish(self.conceptual_robot_state)
 
 
     def send_jibo_lookat(self, _x, _y, _z, _duration=-1):
