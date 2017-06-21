@@ -157,19 +157,19 @@ class robot_translation():
         while not self.robot_command_queue.empty():
         	_discarded_cmd = self.robot_command_queue.get()
         	rospy.loginfo('discarding robot command: {}'.format(_discarded_cmd))
-        	
+
         # if self.conceptual_robot_state.doing_action == False and self.conceptual_robot_state.is_playing_sound == False:
         # cmhuang: this would miss important msg
         self.robot_command_queue.put(data)
 
-        
+
     def send_robot_command(self):
     	while True:
 	    	if self.robot_command_queue.empty():
 	    		# sleep a bit
 	    		rospy.Rate(10).sleep()
 	    		continue
-	    	
+
 	    	data = self.robot_command_queue.get()
 
 	    	# send a \fake\ conceptual robot state signaling that the robot is busy
@@ -290,18 +290,24 @@ class robot_translation():
                 break
             _seg = properties.split(_first_match)
             _speech = _seg[0]
-            _speech = _speech.strip()
+            _speech = _speech.strip('\n')
+            _speech = _speech.strip('\t')
+            _speech = _speech.rstrip()
             _speech = _speech.lstrip()
             if _speech != "":
                 jibo_behavior_queue.put(_speech)
             jibo_behavior_queue.put(_first_match)
             properties = _seg[1]
+            properties = properties.strip('\n')
+            properties = properties.strip('\t')
+            properties = properties.rstrip()
+            properties = properties.lstrip()
         if properties != "":
             jibo_behavior_queue.put(properties)
 
         rospy.loginfo("--------------------------------")
         for elem in list(jibo_behavior_queue.queue):
-            rospy.loginfo(elem)
+            rospy.loginfo('['+elem+']')
         rospy.loginfo("--------------------------------")
 
         return jibo_behavior_queue, speech_parameters
