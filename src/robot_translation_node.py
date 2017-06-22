@@ -460,7 +460,7 @@ class robot_translation():
         # default paramters for jibo speech
         _pitch = 7.6
         _bandwidth = 2.0
-        _stretch = 1.07
+        _stretch = 0.9#1.07
         if _parameters: # dictionary is not empty
             _pitch = _parameters['pitch']
             _bandwidth = _parameters['pitchBandwidth']
