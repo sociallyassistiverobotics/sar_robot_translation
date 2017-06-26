@@ -288,7 +288,7 @@ class robot_translation():
             for matches in regex.finditer(properties):
                 _first_match = matches.group()
                 break
-            _seg = properties.split(_first_match)
+            _seg = properties.split(_first_match, 1)
             _speech = _seg[0]
             _speech = _speech.strip('\n')
             _speech = _speech.strip('\t')
@@ -297,6 +297,7 @@ class robot_translation():
             if _speech != "":
                 jibo_behavior_queue.put(_speech)
             jibo_behavior_queue.put(_first_match)
+            rospy.loginfo('_first_match = ' + _first_match)
             properties = _seg[1]
             properties = properties.strip('\n')
             properties = properties.strip('\t')
